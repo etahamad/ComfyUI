@@ -1879,6 +1879,20 @@ class CogVideoX_I2V(CogVideoX_T2V):
         out = model_base.CogVideoX(self, image_to_video=True, device=device)
         return out
 
+class CogVideoX_Inpaint(CogVideoX_T2V):
+    unet_config = {
+        "image_model": "cogvideox",
+        "in_channels": 48,
+    }
+
+    def get_model(self, state_dict, prefix="", device=None):
+        if self.unet_config.get("patch_size_t") is not None:
+            self.unet_config.setdefault("sample_height", 96)
+            self.unet_config.setdefault("sample_width", 170)
+            self.unet_config.setdefault("sample_frames", 81)
+        out = model_base.CogVideoX(self, image_to_video=True, device=device)
+        return out
+
 
 models = [
     LotusD,
@@ -1958,6 +1972,7 @@ models = [
     ErnieImage,
     SAM3,
     SAM31,
+    CogVideoX_Inpaint,
     CogVideoX_I2V,
     CogVideoX_T2V,
     SVD_img2vid,

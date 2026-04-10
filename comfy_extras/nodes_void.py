@@ -1,6 +1,8 @@
 import nodes
 import node_helpers
 import torch
+import comfy
+import comfy.latent_formats
 import comfy.model_management
 import comfy.utils
 from comfy_api.latest import io, ComfyExtension
@@ -143,6 +145,12 @@ class VOIDInpaintConditioning(io.ComfyNode):
         masked_video_latents = _match_temporal(masked_video_latents, latent_t)
 
         inpaint_latents = torch.cat([mask_latents, masked_video_latents], dim=1)
+
+        # CogVideoX.concat_cond() applies process_latent_in (x scale_factor) to
+        # concat_latent_image before feeding it to the transformer. Pre-divide here
+        # so the net scaling is identity — the VOID model expects raw VAE latents.
+        scale_factor = comfy.latent_formats.CogVideoX().scale_factor
+        inpaint_latents = inpaint_latents / scale_factor
 
         positive = node_helpers.conditioning_set_values(
             positive, {"concat_latent_image": inpaint_latents}

@@ -2,9 +2,10 @@ import nodes
 import node_helpers
 import torch
 import comfy
-import comfy.latent_formats
 import comfy.model_management
+import comfy.samplers
 import comfy.utils
+from comfy.utils import model_trange as trange
 from comfy_api.latest import io, ComfyExtension
 from typing_extensions import override
 
@@ -146,13 +147,12 @@ class VOIDInpaintConditioning(io.ComfyNode):
 
         inpaint_latents = torch.cat([mask_latents, masked_video_latents], dim=1)
 
-        # CogVideoX-Fun was trained with Diffusers convention where VAE latents
-        # are scaled by 0.7 (vae.config.scaling_factor). CogVideoX.concat_cond()
-        # applies process_latent_in (×sf=1.153) to the stored conditioning.
-        # Pre-multiply by 0.7 so the model sees the correct magnitude:
-        #   stored = vae_output × 0.7  →  after process_in: (vae_output×0.7)×sf = raw×0.7
-        DIFFUSERS_SCALING_FACTOR = 0.7
-        inpaint_latents = inpaint_latents * DIFFUSERS_SCALING_FACTOR
+        # No explicit scaling needed here: the model's CogVideoX.concat_cond()
+        # applies process_latent_in (×latent_format.scale_factor) to each 16-ch
+        # block of the stored conditioning. For 5b-class checkpoints (incl. the
+        # VOID/CogVideoX-Fun-V1.5 inpainting model) that scale_factor is auto-
+        # selected as 0.7 in supported_models.CogVideoX_T2V, which matches the
+        # diffusers vae/config.json scaling_factor VOID was trained with.
 
         positive = node_helpers.conditioning_set_values(
             positive, {"concat_latent_image": inpaint_latents}

@@ -1853,6 +1853,14 @@ class CogVideoX_T2V(supported_models_base.BASE):
     vae_key_prefix = ["vae."]
     text_encoder_key_prefix = ["text_encoders."]
 
+    def __init__(self, unet_config):
+        # 2b-class (dim=1920, heads=30) uses scale_factor=1.15258426.
+        # 5b-class (dim=3072, heads=48) — incl. CogVideoX-5b, 1.5-5B, and
+        # Fun-V1.5 inpainting — uses scale_factor=0.7 per vae/config.json.
+        if unet_config.get("num_attention_heads", 0) >= 48:
+            self.latent_format = latent_formats.CogVideoX1_5
+        super().__init__(unet_config)
+
     def get_model(self, state_dict, prefix="", device=None):
         # CogVideoX 1.5 (patch_size_t=2) has different training base dimensions for RoPE
         if self.unet_config.get("patch_size_t") is not None:

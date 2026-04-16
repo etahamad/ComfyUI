@@ -1,14 +1,16 @@
 import logging
 
-import nodes
-import node_helpers
+import numpy as np
 import torch
+
 import comfy
 import comfy.model_management
 import comfy.samplers
 import comfy.utils
+import node_helpers
+import nodes
 from comfy.utils import model_trange as trange
-from comfy_api.latest import io, ComfyExtension
+from comfy_api.latest import ComfyExtension, io
 from typing_extensions import override
 
 TEMPORAL_COMPRESSION = 4
@@ -236,8 +238,6 @@ class VOIDWarpedNoise(io.ComfyNode):
 
     @classmethod
     def execute(cls, video, width, height, length, batch_size) -> io.NodeOutput:
-        import numpy as np
-
         try:
             import rp
             rp.r._pip_import_autoyes = True

@@ -157,7 +157,7 @@ class Wan27VideoEditInputField(BaseModel):
 class Wan27VideoEditParametersField(BaseModel):
     resolution: str = Field(...)
     ratio: str | None = Field(None)
-    duration: int = Field(0)
+    duration: int | None = Field(0)
     audio_setting: str = Field("auto")
     watermark: bool = Field(False)
     seed: int = Field(..., ge=0, le=2147483647)

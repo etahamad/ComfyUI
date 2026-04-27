@@ -12,6 +12,8 @@ from comfy.utils import model_trange as trange
 from comfy_api.latest import ComfyExtension, io
 from typing_extensions import override
 
+from comfy_extras.void_noise_warp import get_noise_from_video
+
 TEMPORAL_COMPRESSION = 4
 PATCH_SIZE_T = 2
 
@@ -212,8 +214,6 @@ class VOIDWarpedNoise(io.ComfyNode):
     Takes the Pass 1 output video and produces temporally-correlated noise
     by warping Gaussian noise along optical flow vectors. This noise is used
     as the initial latent for Pass 2, resulting in better temporal consistency.
-
-    Requires: pip install rp (auto-installs Go-with-the-Flow dependencies)
     """
 
     @classmethod
@@ -237,15 +237,6 @@ class VOIDWarpedNoise(io.ComfyNode):
 
     @classmethod
     def execute(cls, video, width, height, length, batch_size) -> io.NodeOutput:
-        try:
-            import rp
-            rp.r._pip_import_autoyes = True
-            rp.git_import('CommonSource')
-            import rp.git.CommonSource.noise_warp as nw
-        except ImportError:
-            raise RuntimeError(
-                "VOIDWarpedNoise requires the 'rp' package. Install with: pip install rp"
-            )
 
         adjusted_length = _valid_void_length(length)
         if adjusted_length != length:
@@ -260,35 +251,30 @@ class VOIDWarpedNoise(io.ComfyNode):
         latent_h = height // 8
         latent_w = width // 8
 
-        # rp.get_noise_from_video expects uint8 numpy frames; everything
-        # downstream of the warp stays on torch.
-        vid_uint8 = (video[:length].clamp(0, 1) * 255).to(torch.uint8).cpu().numpy()
+        # RAFT + noise warp is real compute, not an "intermediate" buffer, so
+        # we want the actual torch device (CUDA/MPS).  The final latent is
+        # moved back to intermediate_device() before returning to match the
+        # rest of the ComfyUI pipeline.
+        device = comfy.model_management.get_torch_device()
 
-        frames = [vid_uint8[i] for i in range(vid_uint8.shape[0])]
-        frames = rp.resize_images_to_hold(frames, height=height, width=width)
-        frames = rp.crop_images(frames, height=height, width=width, origin='center')
-        frames = rp.as_numpy_array(frames)
+        vid = video[:length].to(device)
+        vid = comfy.utils.common_upscale(
+            vid.movedim(-1, 1), width, height, "bilinear", "center"
+        ).movedim(1, -1)
+        vid_uint8 = (vid.clamp(0, 1) * 255).to(torch.uint8)
 
         FRAME = 2**-1
         FLOW = 2**3
         LATENT_SCALE = 8
 
-        warp_output = nw.get_noise_from_video(
-            frames,
-            remove_background=False,
-            visualize=False,
-            save_files=False,
+        warped = get_noise_from_video(
+            vid_uint8,
             noise_channels=16,
-            output_folder=None,
             resize_frames=FRAME,
             resize_flow=FLOW,
             downscale_factor=round(FRAME * FLOW) * LATENT_SCALE,
+            device=device,
         )
-
-        # (T, H, W, C) → torch on intermediate device for torchified resize.
-        warped = torch.from_numpy(warp_output.numpy_noises).float()
-        device = comfy.model_management.intermediate_device()
-        warped = warped.to(device)
 
         if warped.shape[0] != latent_t:
             indices = torch.linspace(0, warped.shape[0] - 1, latent_t,
@@ -309,6 +295,7 @@ class VOIDWarpedNoise(io.ComfyNode):
         if batch_size > 1:
             warped_tensor = warped_tensor.repeat(batch_size, 1, 1, 1, 1)
 
+        warped_tensor = warped_tensor.to(comfy.model_management.intermediate_device())
         return io.NodeOutput({"samples": warped_tensor})
 
 

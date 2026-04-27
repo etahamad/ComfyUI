@@ -1720,7 +1720,7 @@ class HappyHorseTextToVideoApi(IO.ComfyNode):
                 (
                   $res := $lookup(widgets, "model.resolution");
                   $dur := $lookup(widgets, "model.duration");
-                  $ppsTable := { "720p": 0.12, "1080p": 0.24 };
+                  $ppsTable := { "720p": 0.14, "1080p": 0.24 };
                   $pps := $lookup($ppsTable, $res);
                   { "type": "usd", "usd": $pps * $dur }
                 )
@@ -1844,7 +1844,7 @@ class HappyHorseImageToVideoApi(IO.ComfyNode):
                 (
                   $res := $lookup(widgets, "model.resolution");
                   $dur := $lookup(widgets, "model.duration");
-                  $ppsTable := { "720p": 0.12, "1080p": 0.24 };
+                  $ppsTable := { "720p": 0.14, "1080p": 0.24 };
                   $pps := $lookup($ppsTable, $res);
                   { "type": "usd", "usd": $pps * $dur }
                 )
@@ -1984,7 +1984,7 @@ class HappyHorseVideoEditApi(IO.ComfyNode):
                 expr="""
                 (
                   $res := $lookup(widgets, "model.resolution");
-                  $ppsTable := { "720p": 0.12, "1080p": 0.24 };
+                  $ppsTable := { "720p": 0.14, "1080p": 0.24 };
                   $pps := $lookup($ppsTable, $res);
                   { "type": "usd", "usd": $pps, "format": { "suffix": "/second" } }
                 )
@@ -2075,8 +2075,8 @@ class HappyHorseReferenceVideoApi(IO.ComfyNode):
                                 IO.Int.Input(
                                     "duration",
                                     default=5,
-                                    min=2,
-                                    max=10,
+                                    min=3,
+                                    max=15,
                                     step=1,
                                     display_mode=IO.NumberDisplay.number,
                                 ),
@@ -2134,14 +2134,9 @@ class HappyHorseReferenceVideoApi(IO.ComfyNode):
                 (
                   $res := $lookup(widgets, "model.resolution");
                   $dur := $lookup(widgets, "model.duration");
-                  $ppsTable := { "720p": 0.12, "1080p": 0.24 };
+                  $ppsTable := { "720p": 0.14, "1080p": 0.24 };
                   $pps := $lookup($ppsTable, $res);
-                  $outputPrice := $pps * $dur;
-                  {
-                    "type": "range_usd",
-                    "min_usd": $outputPrice,
-                    "max_usd": 5 * $pps + $outputPrice
-                  }
+                  { "type": "usd", "usd": $pps * $dur }
                 )
                 """,
             ),

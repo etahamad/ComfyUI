@@ -12,7 +12,7 @@
       ],
       "size": [
         410,
-        190.65625
+        200
       ],
       "flags": {},
       "order": 2,
@@ -79,18 +79,18 @@
             "model_name"
           ]
         ],
-        "cnr_id": "comfy-core",
-        "ver": "0.19.3",
         "enableTabs": false,
         "tabWidth": 65,
         "tabXOffset": 10,
         "hasSecondTab": false,
         "secondTabText": "Send Back",
         "secondTabOffset": 80,
-        "secondTabWidth": 65
+        "secondTabWidth": 65,
+        "cnr_id": "comfy-core",
+        "ver": "0.19.3"
       },
       "widgets_values": [],
-      "title": "Frame Interpolate"
+      "title": "Frame Interpolation"
     }
   ],
   "links": [],
@@ -108,7 +108,7 @@
         },
         "revision": 0,
         "config": {},
-        "name": "Frame Interpolate",
+        "name": "Frame Interpolation",
         "inputNode": {
           "id": -10,
           "bounding": [
@@ -246,8 +246,6 @@
             ],
             "properties": {
               "Node name for S&R": "FrameInterpolationModelLoader",
-              "cnr_id": "comfy-core",
-              "ver": "0.19.3",
               "enableTabs": false,
               "tabWidth": 65,
               "tabXOffset": 10,
@@ -255,6 +253,8 @@
               "secondTabText": "Send Back",
               "secondTabOffset": 80,
               "secondTabWidth": 65,
+              "cnr_id": "comfy-core",
+              "ver": "0.19.3",
               "models": [
                 {
                   "name": "film_net_fp16.safetensors",
@@ -317,15 +317,15 @@
             ],
             "properties": {
               "Node name for S&R": "FrameInterpolate",
-              "cnr_id": "comfy-core",
-              "ver": "0.19.3",
               "enableTabs": false,
               "tabWidth": 65,
               "tabXOffset": 10,
               "hasSecondTab": false,
               "secondTabText": "Send Back",
               "secondTabOffset": 80,
-              "secondTabWidth": 65
+              "secondTabWidth": 65,
+              "cnr_id": "comfy-core",
+              "ver": "0.19.3"
             },
             "widgets_values": [
               2
@@ -381,15 +381,15 @@
             ],
             "properties": {
               "Node name for S&R": "CreateVideo",
-              "cnr_id": "comfy-core",
-              "ver": "0.19.3",
               "enableTabs": false,
               "tabWidth": 65,
               "tabXOffset": 10,
               "hasSecondTab": false,
               "secondTabText": "Send Back",
               "secondTabOffset": 80,
-              "secondTabWidth": 65
+              "secondTabWidth": 65,
+              "cnr_id": "comfy-core",
+              "ver": "0.19.3"
             },
             "widgets_values": [
               30
@@ -434,15 +434,15 @@
             "title": "Int (Multiplier)",
             "properties": {
               "Node name for S&R": "PrimitiveInt",
-              "cnr_id": "comfy-core",
-              "ver": "0.19.3",
               "enableTabs": false,
               "tabWidth": 65,
               "tabXOffset": 10,
               "hasSecondTab": false,
               "secondTabText": "Send Back",
               "secondTabOffset": 80,
-              "secondTabWidth": 65
+              "secondTabWidth": 65,
+              "cnr_id": "comfy-core",
+              "ver": "0.19.3"
             },
             "widgets_values": [
               2,
@@ -498,15 +498,15 @@
             ],
             "properties": {
               "Node name for S&R": "ComfySwitchNode",
-              "cnr_id": "comfy-core",
-              "ver": "0.19.3",
               "enableTabs": false,
               "tabWidth": 65,
               "tabXOffset": 10,
               "hasSecondTab": false,
               "secondTabText": "Send Back",
               "secondTabOffset": 80,
-              "secondTabWidth": 65
+              "secondTabWidth": 65,
+              "cnr_id": "comfy-core",
+              "ver": "0.19.3"
             },
             "widgets_values": [
               true
@@ -550,15 +550,15 @@
             "title": "Boolean (Apply multiplier to FPS?)",
             "properties": {
               "Node name for S&R": "PrimitiveBoolean",
-              "cnr_id": "comfy-core",
-              "ver": "0.19.3",
               "enableTabs": false,
               "tabWidth": 65,
               "tabXOffset": 10,
               "hasSecondTab": false,
               "secondTabText": "Send Back",
               "secondTabOffset": 80,
-              "secondTabWidth": 65
+              "secondTabWidth": 65,
+              "cnr_id": "comfy-core",
+              "ver": "0.19.3"
             },
             "widgets_values": [
               true
@@ -615,15 +615,15 @@
             ],
             "properties": {
               "Node name for S&R": "GetVideoComponents",
-              "cnr_id": "comfy-core",
-              "ver": "0.19.3",
               "enableTabs": false,
               "tabWidth": 65,
               "tabXOffset": 10,
               "hasSecondTab": false,
               "secondTabText": "Send Back",
               "secondTabOffset": 80,
-              "secondTabWidth": 65
+              "secondTabWidth": 65,
+              "cnr_id": "comfy-core",
+              "ver": "0.19.3"
             }
           },
           {
@@ -694,15 +694,15 @@
             ],
             "properties": {
               "Node name for S&R": "ComfyMathExpression",
-              "cnr_id": "comfy-core",
-              "ver": "0.19.3",
               "enableTabs": false,
               "tabWidth": 65,
               "tabXOffset": 10,
               "hasSecondTab": false,
               "secondTabText": "Send Back",
               "secondTabOffset": 80,
-              "secondTabWidth": 65
+              "secondTabWidth": 65,
+              "cnr_id": "comfy-core",
+              "ver": "0.19.3"
             },
             "widgets_values": [
               "min(abs(b), 16) * a"

@@ -295,7 +295,8 @@
             "type": "IMAGE"
           }
         ],
-        "extra": {}
+        "extra": {},
+        "category": "Video Tools"
       }
     ]
   },

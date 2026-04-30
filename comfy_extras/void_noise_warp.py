@@ -9,8 +9,10 @@ Adapted from RyannDaGreat/CommonSource (MIT License, Ryan Burgert):
 Only the code paths that ``comfy_extras/nodes_void.py::VOIDWarpedNoise`` actually
 uses (torch THWC uint8 input, no background removal, no visualization, no disk
 I/O, default warp/noise params) have been inlined.  External ``rp`` utilities
-have been replaced with equivalents from torch.nn.functional / einops /
-torchvision.
+have been replaced with equivalents from torch.nn.functional / einops.  The
+RAFT optical-flow model itself is loaded offline via ``OpticalFlowLoader`` in
+``nodes_void.py`` and passed into ``get_noise_from_video`` by the caller; this
+module never downloads weights at runtime.
 """
 
 import logging
@@ -19,7 +21,6 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 from einops import rearrange
-from torchvision.models.optical_flow import raft_large
 
 import comfy.model_management
 
@@ -345,14 +346,20 @@ class NoiseWarper:
 # ---------------------------------------------------------------------------
 
 class RaftOpticalFlow:
-    """Torchvision RAFT-large wrapper.  ``__call__`` returns a (2, H, W) flow."""
+    """RAFT-large wrapper around a pre-loaded torchvision model.
 
-    def __init__(self, device=None):
+    ``model`` must be the ``torchvision.models.optical_flow.raft_large`` module
+    with its weights already populated; this class is load-agnostic so the
+    caller owns downloading/offload concerns (see ``OpticalFlowLoader`` in
+    ``nodes_void.py``).  ``__call__`` returns a ``(2, H, W)`` flow.
+    """
+
+    def __init__(self, model, device=None):
         if device is None:
             device = comfy.model_management.get_torch_device()
         device = torch.device(device) if not isinstance(device, torch.device) else device
 
-        model = raft_large(weights="DEFAULT", progress=False).to(device)
+        model = model.to(device)
         model.eval()
         self.device = device
         self.model = model
@@ -384,22 +391,13 @@ class RaftOpticalFlow:
         return flow
 
 
-_raft_cache: dict = {}
-
-
-def _get_raft_model(device):
-    key = str(device)
-    if key not in _raft_cache:
-        _raft_cache[key] = RaftOpticalFlow(device=device)
-    return _raft_cache[key]
-
-
 # ---------------------------------------------------------------------------
 # Narrow entry point used by VOIDWarpedNoise
 # ---------------------------------------------------------------------------
 
 def get_noise_from_video(
     video_frames: torch.Tensor,
+    raft: RaftOpticalFlow,
     *,
     noise_channels: int = 16,
     resize_frames: float = 0.5,
@@ -411,6 +409,7 @@ def get_noise_from_video(
 
     Args:
         video_frames: ``(T, H, W, 3)`` uint8 torch tensor.
+        raft: Pre-loaded RAFT optical-flow wrapper (see ``RaftOpticalFlow``).
         noise_channels: Channels in the output noise.
         resize_frames: Pre-RAFT frame scale factor.
         resize_flow: Post-flow up-scale factor applied to the optical flow;
@@ -464,8 +463,6 @@ def get_noise_from_video(
             "downscale_factor %d; output noise may have artifacts.",
             internal_h, internal_w, downscale_factor,
         )
-
-    raft = _get_raft_model(device)
 
     with torch.no_grad():
         warper = NoiseWarper(

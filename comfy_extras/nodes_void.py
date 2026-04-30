@@ -4,15 +4,21 @@ import torch
 
 import comfy
 import comfy.model_management
+import comfy.model_patcher
 import comfy.samplers
 import comfy.utils
+import folder_paths
 import node_helpers
 import nodes
 from comfy.utils import model_trange as trange
 from comfy_api.latest import ComfyExtension, io
+from torchvision.models.optical_flow import raft_large
 from typing_extensions import override
 
-from comfy_extras.void_noise_warp import get_noise_from_video
+
+from comfy_extras.void_noise_warp import RaftOpticalFlow, get_noise_from_video
+
+OpticalFlow = io.Custom("OPTICAL_FLOW")
 
 TEMPORAL_COMPRESSION = 4
 PATCH_SIZE_T = 2
@@ -36,6 +42,67 @@ def _valid_void_length(length: int) -> int:
     # so we never return a non-positive length.
     target_latent_t = max(PATCH_SIZE_T, (latent_t // PATCH_SIZE_T) * PATCH_SIZE_T)
     return (target_latent_t - 1) * TEMPORAL_COMPRESSION + 1
+
+
+class OpticalFlowLoader(io.ComfyNode):
+    """Load an optical flow model from ``models/optical_flow/``.
+
+    Only torchvision's RAFT-large format is recognized today (the model used
+    by VOIDWarpedNoise).  The checkpoint must be placed under
+    ``models/optical_flow/`` — ComfyUI never downloads optical-flow weights
+    at runtime.
+    """
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="OpticalFlowLoader",
+            display_name="Load Optical Flow Model",
+            category="loaders",
+            inputs=[
+                io.Combo.Input(
+                    "model_name",
+                    options=folder_paths.get_filename_list("optical_flow"),
+                    tooltip=(
+                        "Optical flow model to load.  Files must be placed in the "
+                        "'optical_flow' folder.  Today only torchvision's "
+                        "raft_large.pth is supported."
+                    ),
+                ),
+            ],
+            outputs=[
+                OpticalFlow.Output(),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, model_name) -> io.NodeOutput:
+
+        model_path = folder_paths.get_full_path_or_raise("optical_flow", model_name)
+        sd = comfy.utils.load_torch_file(model_path, safe_load=True)
+
+        has_raft_keys = (
+            any(k.startswith("feature_encoder.") for k in sd)
+            and any(k.startswith("context_encoder.") for k in sd)
+            and any(k.startswith("update_block.") for k in sd)
+        )
+        if not has_raft_keys:
+            raise ValueError(
+                "Unrecognized optical flow model format: expected a torchvision "
+                "RAFT-large state dict with 'feature_encoder.', 'context_encoder.' "
+                "and 'update_block.' prefixes."
+            )
+
+        model = raft_large(weights=None, progress=False)
+        model.load_state_dict(sd)
+        model.eval().to(torch.float32)
+
+        patcher = comfy.model_patcher.ModelPatcher(
+            model,
+            load_device=comfy.model_management.get_torch_device(),
+            offload_device=comfy.model_management.unet_offload_device(),
+        )
+        return io.NodeOutput(patcher)
 
 
 class VOIDQuadmaskPreprocess(io.ComfyNode):
@@ -222,6 +289,10 @@ class VOIDWarpedNoise(io.ComfyNode):
             node_id="VOIDWarpedNoise",
             category="latent/video",
             inputs=[
+                OpticalFlow.Input(
+                    "optical_flow",
+                    tooltip="Optical flow model from OpticalFlowLoader (RAFT-large).",
+                ),
                 io.Image.Input("video", tooltip="Pass 1 output video frames [T, H, W, 3]"),
                 io.Int.Input("width", default=672, min=16, max=nodes.MAX_RESOLUTION, step=8),
                 io.Int.Input("height", default=384, min=16, max=nodes.MAX_RESOLUTION, step=8),
@@ -236,7 +307,7 @@ class VOIDWarpedNoise(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, video, width, height, length, batch_size) -> io.NodeOutput:
+    def execute(cls, optical_flow, video, width, height, length, batch_size) -> io.NodeOutput:
 
         adjusted_length = _valid_void_length(length)
         if adjusted_length != length:
@@ -257,6 +328,9 @@ class VOIDWarpedNoise(io.ComfyNode):
         # rest of the ComfyUI pipeline.
         device = comfy.model_management.get_torch_device()
 
+        comfy.model_management.load_model_gpu(optical_flow)
+        raft = RaftOpticalFlow(optical_flow.model, device=device)
+
         vid = video[:length].to(device)
         vid = comfy.utils.common_upscale(
             vid.movedim(-1, 1), width, height, "bilinear", "center"
@@ -269,6 +343,7 @@ class VOIDWarpedNoise(io.ComfyNode):
 
         warped = get_noise_from_video(
             vid_uint8,
+            raft,
             noise_channels=16,
             resize_frames=FRAME,
             resize_flow=FLOW,
@@ -395,6 +470,7 @@ class VOIDExtension(ComfyExtension):
     @override
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
+            OpticalFlowLoader,
             VOIDQuadmaskPreprocess,
             VOIDInpaintConditioning,
             VOIDWarpedNoise,

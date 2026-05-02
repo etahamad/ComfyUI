@@ -49,6 +49,8 @@ class SupportedOpenAIModel(str, Enum):
     gpt_5 = "gpt-5"
     gpt_5_mini = "gpt-5-mini"
     gpt_5_nano = "gpt-5-nano"
+    gpt_5_5 = "gpt-5.5"
+    gpt_5_5_pro = "gpt-5.5-pro"
 
 
 async def validate_and_cast_response(response, timeout: int = None) -> torch.Tensor:
@@ -737,6 +739,16 @@ class OpenAIChatNode(IO.ComfyNode):
                   : $contains($m, "gpt-4.1") ? {
                     "type": "list_usd",
                     "usd": [0.002, 0.008],
+                    "format": { "approximate": true, "separator": "-", "suffix": " per 1K tokens" }
+                  }
+                  : $contains($m, "gpt-5.5-pro") ? {
+                    "type": "list_usd",
+                    "usd": [0.03, 0.18],
+                    "format": { "approximate": true, "separator": "-", "suffix": " per 1K tokens" }
+                  }
+                  : $contains($m, "gpt-5.5") ? {
+                    "type": "list_usd",
+                    "usd": [0.005, 0.03],
                     "format": { "approximate": true, "separator": "-", "suffix": " per 1K tokens" }
                   }
                   : $contains($m, "gpt-5-nano") ? {

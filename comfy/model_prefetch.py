@@ -1,4 +1,7 @@
-import comfy_aimdo.model_vbar
+try:
+    import comfy_aimdo.model_vbar
+except ImportError:
+    comfy_aimdo = None
 import comfy.model_management
 import comfy.ops
 
@@ -14,7 +17,8 @@ def cleanup_prefetched_modules(comfy_modules):
             if lowvram_fn is not None:
                 lowvram_fn.clear_prepared()
         if prefetch["signature"] is not None:
-            comfy_aimdo.model_vbar.vbar_unpin(s._v)
+            if comfy_aimdo is not None:
+                comfy_aimdo.model_vbar.vbar_unpin(s._v)
         delattr(s, "_prefetch")
 
 def cleanup_prefetch_queues():

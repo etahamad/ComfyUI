@@ -26,8 +26,11 @@ import comfy.memory_management
 import comfy.pinned_memory
 import comfy.utils
 
-import comfy_aimdo.model_vbar
-import comfy_aimdo.torch
+try:
+    import comfy_aimdo.model_vbar
+    import comfy_aimdo.torch
+except ImportError:
+    comfy_aimdo = None
 
 def run_every_op():
     if torch.compiler.is_compiling():
@@ -120,11 +123,17 @@ def cast_modules_with_vbar(comfy_modules, dtype, device, bias_dtype, non_blockin
             return torch.empty((buffer_size,), dtype=torch.uint8, device=device)
 
         cast_buffer = comfy.model_management.get_aimdo_cast_buffer(offload_stream, device)
+        if cast_buffer is None or comfy_aimdo is None:
+            return torch.empty((buffer_size,), dtype=torch.uint8, device=device)
         buffer = comfy_aimdo.torch.aimdo_to_tensor(cast_buffer.get(buffer_size, cast_buffer_offset), device)
         cast_buffer_offset += buffer_size
         return buffer
 
     for s in comfy_modules:
+        if comfy_aimdo is None:
+            prefetch = {"resident": False}
+            s._prefetch = prefetch
+            continue
         signature = comfy_aimdo.model_vbar.vbar_fault(s._v)
         resident = comfy_aimdo.model_vbar.vbar_signature_compare(signature, s._v_signature)
         prefetch = {
@@ -137,7 +146,7 @@ def cast_modules_with_vbar(comfy_modules, dtype, device, bias_dtype, non_blockin
             continue
 
         materialize_meta_param(s, ["weight", "bias"])
-        xfer_dest = comfy_aimdo.torch.aimdo_to_tensor(s._v, device) if signature is not None else None
+        xfer_dest = comfy_aimdo.torch.aimdo_to_tensor(s._v, device) if signature is not None and comfy_aimdo is not None else None
         cast_geometry = comfy.memory_management.tensors_to_geometries([ s.weight, s.bias ])
         cast_dest = None
         needs_cast = False
@@ -370,7 +379,8 @@ def uncast_bias_weight(s, weight, bias, offload_stream):
     device=None
     #FIXME: This is really bad RTTI
     if weight_a is not None and not isinstance(weight_a, torch.Tensor):
-        comfy_aimdo.model_vbar.vbar_unpin(s._v)
+        if comfy_aimdo is not None:
+            comfy_aimdo.model_vbar.vbar_unpin(s._v)
         device = weight_a
     if os is None:
         return

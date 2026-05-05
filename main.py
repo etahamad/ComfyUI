@@ -39,9 +39,12 @@ if __name__ == "__main__":
 
 faulthandler.enable(file=sys.stderr, all_threads=False)
 
-import comfy_aimdo.control
+try:
+    import comfy_aimdo.control
+except ImportError:
+    comfy_aimdo = None
 
-if enables_dynamic_vram():
+if comfy_aimdo is not None and enables_dynamic_vram():
     comfy_aimdo.control.init()
 
 if os.name == "nt":
@@ -218,7 +221,7 @@ import comfy.model_patcher
 if args.enable_dynamic_vram or (enables_dynamic_vram() and comfy.model_management.is_nvidia() and not comfy.model_management.is_wsl()):
     if (not args.enable_dynamic_vram) and (comfy.model_management.torch_version_numeric < (2, 8)):
         logging.warning("Unsupported Pytorch detected. DynamicVRAM support requires Pytorch version 2.8 or later. Falling back to legacy ModelPatcher. VRAM estimates may be unreliable especially on Windows")
-    elif comfy_aimdo.control.init_device(comfy.model_management.get_torch_device().index):
+    elif comfy_aimdo is not None and comfy_aimdo.control.init_device(comfy.model_management.get_torch_device().index):
         if args.verbose == 'DEBUG':
             comfy_aimdo.control.set_log_debug()
         elif args.verbose == 'CRITICAL':

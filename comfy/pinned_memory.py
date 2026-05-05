@@ -1,7 +1,10 @@
 import comfy.model_management
 import comfy.memory_management
-import comfy_aimdo.host_buffer
-import comfy_aimdo.torch
+try:
+    import comfy_aimdo.host_buffer
+    import comfy_aimdo.torch
+except ImportError:
+    comfy_aimdo = None
 
 from comfy.cli_args import args
 
@@ -11,6 +14,10 @@ def get_pin(module):
 def pin_memory(module):
     if module.pin_failed or args.disable_pinned_memory or get_pin(module) is not None:
         return
+
+    if comfy_aimdo is None:
+        module.pin_failed = True
+        return False
 
     size = comfy.memory_management.vram_aligned_size([ module.weight, module.bias ])
 

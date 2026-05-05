@@ -83,7 +83,18 @@ _TYPES = {
 }
 
 def load_safetensors(ckpt):
-    import comfy_aimdo.model_mmap
+    try:
+        import comfy_aimdo.model_mmap
+    except ImportError:
+        comfy_aimdo = None
+
+    if comfy_aimdo is None:
+        # Fallback if comfy-aimdo is missing but we're here for some reason.
+        # This shouldn't normally be called if aimdo_enabled is False.
+        import safetensors.torch
+        with safetensors.safe_open(ckpt, framework="pt", device="cpu") as st:
+            sd = {k: st.get_tensor(k) for k in st.keys()}
+            return sd, st.metadata()
 
     f = open(ckpt, "rb", buffering=0)
     model_mmap = comfy_aimdo.model_mmap.ModelMMAP(ckpt)

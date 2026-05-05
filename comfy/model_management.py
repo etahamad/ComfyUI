@@ -31,7 +31,10 @@ from contextlib import nullcontext
 import comfy.memory_management
 import comfy.utils
 import comfy.quant_ops
-import comfy_aimdo.vram_buffer
+try:
+    import comfy_aimdo.vram_buffer
+except ImportError:
+    comfy_aimdo = None
 
 class VRAMState(Enum):
     DISABLED = 0    #No vram present: no need to move models to vram
@@ -1216,6 +1219,8 @@ def get_cast_buffer(offload_stream, device, size, ref):
     return cast_buffer
 
 def get_aimdo_cast_buffer(offload_stream, device):
+    if comfy_aimdo is None:
+        return None
     cast_buffer = STREAM_AIMDO_CAST_BUFFERS.get(offload_stream, None)
     if cast_buffer is None:
         cast_buffer = comfy_aimdo.vram_buffer.VRAMBuffer(DEFAULT_AIMDO_CAST_BUFFER_RESERVATION_SIZE, device.index)
